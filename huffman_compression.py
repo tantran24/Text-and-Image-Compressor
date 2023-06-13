@@ -1,5 +1,5 @@
-from collections import Counter, defaultdict
 import heapq
+from collections import Counter
 
 
 class HuffmanNode:
@@ -45,6 +45,13 @@ def build_codewords_mapping(node, current_code, codewords_mapping):
     build_codewords_mapping(node.right, current_code + '1', codewords_mapping)
 
 
+def get_encoding_table(codewords_mapping):
+    encoding_table = {}
+    for char, codeword in codewords_mapping.items():
+        encoding_table[codeword] = char
+    return encoding_table
+
+
 def compress(text):
     frequency_table = build_frequency_table(text)
     huffman_tree = build_huffman_tree(frequency_table)
@@ -57,8 +64,12 @@ def compress(text):
     return compressed_text, get_encoding_table(codewords_mapping)
 
 
-def get_encoding_table(codewords_mapping):
-    encoding_table = {}
-    for char, codeword in codewords_mapping.items():
-        encoding_table[codeword] = char
-    return encoding_table
+def decompress(compressed_text, encoding_table):
+    decoded_text = ""
+    codeword = ""
+    for bit in compressed_text:
+        codeword += bit
+        if codeword in encoding_table:
+            decoded_text += encoding_table[codeword]
+            codeword = ""
+    return decoded_text

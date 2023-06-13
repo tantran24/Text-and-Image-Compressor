@@ -24,8 +24,10 @@ def text_compression():
 
         if compression_algorithm == 'LZ77':
             compressed_text, encoding_table = lz77_compression.compress(text)
+            decompressed_text = lz77_compression.decompress(compressed_text)
         elif compression_algorithm == 'Huffman':
             compressed_text, encoding_table = huffman_compression.compress(text)
+            decompressed_text = huffman_compression.decompress(compressed_text, encoding_table)
 
         compressed_size = len(compressed_text.encode())
         original_size = len(text.encode())
@@ -33,6 +35,7 @@ def text_compression():
 
         st.markdown("**Compression Results**")
         st.markdown(f"Compressed text: {compressed_text}")
+        st.markdown(f"Decompressed text: {decompressed_text}")
         st.markdown(f"Compressed size: {compressed_size} bytes")
         st.markdown(f"Original size: {original_size} bytes")
         st.markdown(f"Percent saved: {saved_percent:.2f}%")
