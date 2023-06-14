@@ -3,6 +3,10 @@ from PIL import Image
 
 import huffman_compression
 import lz77_compression
+import lzw_compression
+import rle_compression
+
+global encoding_table
 
 
 def get_file_size(file_path):
@@ -14,7 +18,7 @@ def text_compression():
     st.title("Text Compression")
 
     text = st.text_area("Enter the text to compress", height=200)
-    compression_options = ['LZ77', 'Huffman']
+    compression_options = ['Huffman', 'LZ77', 'RLE', 'LZW']
     compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
 
     if st.button("Compress"):
@@ -22,12 +26,14 @@ def text_compression():
             st.warning("Please enter some text.")
             return
 
-        if compression_algorithm == 'LZ77':
-            compressed_text, encoding_table = lz77_compression.compress(text)
-            decompressed_text = lz77_compression.decompress(compressed_text)
-        elif compression_algorithm == 'Huffman':
+        if compression_algorithm == 'Huffman':
             compressed_text, encoding_table = huffman_compression.compress(text)
-            decompressed_text = huffman_compression.decompress(compressed_text, encoding_table)
+        elif compression_algorithm == 'LZ77':
+            compressed_text, encoding_table = lz77_compression.compress(text)
+        elif compression_algorithm == 'RLE':
+            compressed_text, encoding_table = rle_compression.compress(text)
+        elif compression_algorithm == 'LZW':
+            compressed_text, encoding_table = lzw_compression.compress_text(text)
 
         compressed_size = len(compressed_text.encode())
         original_size = len(text.encode())
@@ -35,13 +41,28 @@ def text_compression():
 
         st.markdown("**Compression Results**")
         st.markdown(f"Compressed text: {compressed_text}")
-        st.markdown(f"Decompressed text: {decompressed_text}")
         st.markdown(f"Compressed size: {compressed_size} bytes")
         st.markdown(f"Original size: {original_size} bytes")
         st.markdown(f"Percent saved: {saved_percent:.2f}%")
 
         st.markdown("**Character Encoding Table**")
         st.table(encoding_table)
+
+    if st.button("Decompress"):
+        if not text:
+            st.warning("Please enter some text.")
+            return
+
+        if compression_algorithm == 'LZ77':
+            decompressed_text = lz77_compression.decompress(text)
+        elif compression_algorithm == 'Huffman':
+            decompressed_text = huffman_compression.decompress(text, encoding_table)
+        elif compression_algorithm == 'RLE':
+            decompressed_text = rle_compression.decompress(text, encoding_table)
+        elif compression_algorithm == 'LZW':
+            decompressed_text = lzw_compression.decompress(text, encoding_table)
+
+        st.markdown(f"Decompressed text: {decompressed_text}")
 
 
 def image_compression():
