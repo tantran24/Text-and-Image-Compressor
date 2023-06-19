@@ -1,13 +1,10 @@
 import streamlit as st
 from PIL import Image
 
-import huffman_compression
-import lz77_compression
-import lzw_compression
-import rle_compression
-
-global encoding_table
-
+import huffman
+import lz77
+import lzw
+import rle
 
 def get_file_size(file_path):
     with open(file_path, 'rb') as file:
@@ -17,52 +14,55 @@ def get_file_size(file_path):
 def text_compression():
     st.title("Text Compression")
 
-    text = st.text_area("Enter the text to compress", height=200)
-    compression_options = ['Huffman', 'LZ77', 'RLE', 'LZW']
-    compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
+    input_text = st.text_area("Enter the text to compress:")
+    output_text = st.empty()
 
-    if st.button("Compress"):
-        if not text:
+    compression_options = ['Huffman', 'LZ77', 'RLE', 'LZW']
+    compression_algorithm = st.sidebar.selectbox("Select compression algorithm", compression_options)
+
+    if st.sidebar.button("Compress"):
+        if not input_text:
             st.warning("Please enter some text.")
             return
 
         if compression_algorithm == 'Huffman':
-            compressed_text, encoding_table = huffman_compression.compress(text)
+            encoding, tree, codes, before, after = huffman.encoding_text(input_text)
+
+            output_text.text(f"Encoded output: {encoding}")
+
+            st.subheader("Encoding Table:")
+            table_data = [["Symbol", "Code"]]
+            for symbol, code in codes.items():
+                table_data.append([symbol, code])
+            st.table(table_data)
+
         elif compression_algorithm == 'LZ77':
-            compressed_text, encoding_table = lz77_compression.compress(text)
+            pass
         elif compression_algorithm == 'RLE':
-            compressed_text, encoding_table = rle_compression.compress(text)
+            pass
         elif compression_algorithm == 'LZW':
-            compressed_text, encoding_table = lzw_compression.compress_text(text)
+            pass
+        percent_saved = (1 - after / before) * 100
 
-        compressed_size = len(compressed_text.encode())
-        original_size = len(text.encode())
-        saved_percent = ((original_size - compressed_size) / original_size) * 100
+        st.markdown("### Compression Results")
+        st.text(f"Original Size: {before} bits")
+        st.text(f"Compressed Size: {after} bits")
+        st.text(f"Percent Saved: {percent_saved:.2f}%")
 
-        st.markdown("**Compression Results**")
-        st.markdown(f"Compressed text: {compressed_text}")
-        st.markdown(f"Compressed size: {compressed_size} bytes")
-        st.markdown(f"Original size: {original_size} bytes")
-        st.markdown(f"Percent saved: {saved_percent:.2f}%")
+    if st.sidebar.button("Decompress"):
+        if input_text:
+            if compression_algorithm == 'Huffman':
+                encoding, tree, codes, before, after = huffman.encoding_text(input_text)
+                decoded_output = huffman.decoding_text(encoding, tree)
+            elif compression_algorithm == 'LZ77':
+                pass
+            elif compression_algorithm == 'RLE':
+                pass
+            elif compression_algorithm == 'LZW':
+                pass
 
-        st.markdown("**Character Encoding Table**")
-        st.table(encoding_table)
-
-    if st.button("Decompress"):
-        if not text:
-            st.warning("Please enter some text.")
-            return
-
-        if compression_algorithm == 'LZ77':
-            decompressed_text = lz77_compression.decompress(text)
-        elif compression_algorithm == 'Huffman':
-            decompressed_text = huffman_compression.decompress(text, encoding_table)
-        elif compression_algorithm == 'RLE':
-            decompressed_text = rle_compression.decompress(text, encoding_table)
-        elif compression_algorithm == 'LZW':
-            decompressed_text = lzw_compression.decompress(text, encoding_table)
-
-        st.markdown(f"Decompressed text: {decompressed_text}")
+            st.text(f"Encoded output: {encoding}")
+            output_text.text(f"Decoded output: {decoded_output}")
 
 
 def image_compression():
@@ -72,7 +72,7 @@ def image_compression():
     uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'],
                                       key="image")
 
-    compression_options = ['LWZ', 'Huffman']
+    compression_options = ['Huffman', 'LWZ']
     compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
 
     if st.button("Compress"):
@@ -86,18 +86,9 @@ def image_compression():
             image.save(image_path)
 
             if compression_algorithm == 'LWZ':
-                compressed_path = lwz_compression.compress(image_path)
+                pass
             elif compression_algorithm == 'Huffman':
-                compressed_path = huffman_compression.compress(image_path)
-
-            compressed_size = get_file_size(compressed_path)
-            original_size = get_file_size(image_path)
-            saved_percent = ((original_size - compressed_size) / original_size) * 100
-
-            st.markdown(f"**Image: {uploaded_file.name}**")
-            st.markdown(f"Compressed size: {compressed_size} bytes")
-            st.markdown(f"Original size: {original_size} bytes")
-            st.markdown(f"Percent saved: {saved_percent:.2f}%")
+                pass
 
             st.image(image)
             st.markdown("----")
