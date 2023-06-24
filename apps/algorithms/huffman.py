@@ -7,93 +7,92 @@ class Node:
         self.code = ''
 
 
-def Calculate_Codes(node, val='', codes={}):
-    newVal = val + str(node.code)
+class Huffman:
+    def __init__(self, data):
+        self.data = data
+        self.symbol_with_probs = self.calculate_probability(data)
+        self.symbols = self.symbol_with_probs.keys()
+        self.nodes = self.build_tree()
+        self.codes = self.calculate_codes(self.nodes[0])
+        self.before_compression, self.after_compression = self.calculate_total_gain()
 
-    if node.left:
-        codes = Calculate_Codes(node.left, newVal, codes)
-    if node.right:
-        codes = Calculate_Codes(node.right, newVal, codes)
+    def calculate_probability(self, data):
+        symbols = dict()
+        for element in data:
+            symbols[element] = symbols.get(element, 0) + 1
+        return symbols
 
-    if not node.left and not node.right:
-        codes[node.symbol] = newVal
+    def build_tree(self):
+        nodes = []
+        for symbol in self.symbols:
+            nodes.append(Node(self.symbol_with_probs.get(symbol), symbol))
 
-    return codes
+        while len(nodes) > 1:
+            nodes = sorted(nodes, key=lambda x: x.prob)
 
+            right = nodes[0]
+            left = nodes[1]
 
-def Calculate_Probability(data):
-    symbols = dict()
-    for element in data:
-        if symbols.get(element) is None:
-            symbols[element] = 1
-        else:
-            symbols[element] += 1
-    return symbols
+            left.code = 0
+            right.code = 1
 
+            new_node = Node(left.prob + right.prob, left.symbol + right.symbol, left, right)
 
-def Output_Encoded(data, coding):
-    encoding_output = []
-    for c in data:
-        encoding_output.append(coding[c])
+            nodes.remove(left)
+            nodes.remove(right)
+            nodes.append(new_node)
 
-    string = ''.join([str(item) for item in encoding_output])
-    return string
+        return nodes
 
+    def calculate_codes(self, node, val='', codes={}):
+        new_val = val + str(node.code)
 
-def Total_Gain(data, coding):
-    before_compression = len(data) * 8
-    after_compression = 0
-    symbols = coding.keys()
-    for symbol in symbols:
-        count = data.count(symbol)
-        after_compression += count * len(coding[symbol])
-    return before_compression, after_compression
+        if node.left:
+            codes = self.calculate_codes(node.left, new_val, codes)
+        if node.right:
+            codes = self.calculate_codes(node.right, new_val, codes)
 
+        if not node.left and not node.right:
+            codes[node.symbol] = new_val
 
-def encoding_text(data):
-    symbol_with_probs = Calculate_Probability(data)
-    symbols = symbol_with_probs.keys()
+        return codes
 
-    nodes = []
-    for symbol in symbols:
-        nodes.append(Node(symbol_with_probs.get(symbol), symbol))
+    def calculate_total_gain(self):
+        before_compression = len(self.data) * 8
+        after_compression = 0
 
-    while len(nodes) > 1:
-        nodes = sorted(nodes, key=lambda x: x.prob)
+        for symbol in self.symbols:
+            count = self.data.count(symbol)
+            after_compression += count * len(self.codes[symbol])
 
-        right = nodes[0]
-        left = nodes[1]
+        return before_compression, after_compression
 
-        left.code = 0
-        right.code = 1
+    def encode_text(self):
+        encoded_output = self.output_encoded(self.data, self.codes)
+        return encoded_output, self.nodes[0], self.codes, self.before_compression, self.after_compression
 
-        newNode = Node(left.prob + right.prob, left.symbol + right.symbol, left, right)
+    @staticmethod
+    def output_encoded(data, coding):
+        encoding_output = []
+        for c in data:
+            encoding_output.append(coding[c])
 
-        nodes.remove(left)
-        nodes.remove(right)
-        nodes.append(newNode)
+        return ''.join([str(item) for item in encoding_output])
 
-    codes = Calculate_Codes(nodes[0])
-    before_compression, after_compression = Total_Gain(data, codes)
-    encoded_output = Output_Encoded(data, codes)
+    @staticmethod
+    def decoding_text(encoded_data, huffman_tree):
+        tree_head = huffman_tree
+        decoded_output = []
+        for x in encoded_data:
+            if x == '1':
+                huffman_tree = huffman_tree.right
+            elif x == '0':
+                huffman_tree = huffman_tree.left
+            try:
+                if huffman_tree.left.symbol is None and huffman_tree.right.symbol is None:
+                    pass
+            except AttributeError:
+                decoded_output.append(huffman_tree.symbol)
+                huffman_tree = tree_head
 
-    return encoded_output, nodes[0], codes, before_compression, after_compression
-
-
-def decoding_text(encoded_data, huffman_tree):
-    tree_head = huffman_tree
-    decoded_output = []
-    for x in encoded_data:
-        if x == '1':
-            huffman_tree = huffman_tree.right
-        elif x == '0':
-            huffman_tree = huffman_tree.left
-        try:
-            if huffman_tree.left.symbol is None and huffman_tree.right.symbol is None:
-                pass
-        except AttributeError:
-            decoded_output.append(huffman_tree.symbol)
-            huffman_tree = tree_head
-
-    string = ''.join([str(item) for item in decoded_output])
-    return string
+        return ''.join([str(item) for item in decoded_output])
