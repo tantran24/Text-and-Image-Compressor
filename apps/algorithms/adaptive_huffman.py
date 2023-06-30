@@ -1,103 +1,233 @@
-import heapq
-import numpy as np
-import cv2
+import operator
 
-class Node:
-    def __init__(self, freq, symbol, left=None, right=None):
-        self.freq = freq
-        self.symbol = symbol
-        self.left = left
-        self.right = right
+from bitarray import bitarray, bits2bytes
 
-    def __lt__(self, other):
-        return self.freq < other.freq
+from .utils.tree import Tree, NYT, exchange
+from .utils.utils import (encode_dpcm, decode_dpcm, bin_str2bool_list, bool_list2int)
+
 
 class AdaptiveHuffman:
-    def __init__(self):
-        self.root = Node(freq=0, symbol=None)
-        self.nodes = {}
+    def __init__(self, byte_seq, alphabet_range=(0, 255), dpcm=False):
+        """Create an adaptive huffman encoder and decoder.
 
-    def encode_image(self, image_path):
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-        height, width = image.shape
+        Args:
+            byte_seq (bytes): The bytes sequence to encode or decode.
+            alphabet_range (tuple or integer): The range of alphabet
+                inclusively.
+        """
 
-        encoded_data = []
+        self.byte_seq = byte_seq
+        self.dpcm = dpcm
 
-        for row in range(height):
-            for col in range(width):
-                symbol = image[row, col]
+        self._bits = None  # Only used in decode().
+        self._bits_idx = 0  # Only used in decode().
 
-                if symbol not in self.nodes:
-                    self.nodes[symbol] = Node(freq=1, symbol=symbol)
-                    self.encode_symbol(self.nodes[symbol], encoded_data)
+        # Get the first decimal number of all alphabets
+        self._alphabet_first_num = min(alphabet_range)
+        alphabet_size = abs(alphabet_range[0] - alphabet_range[1]) + 1
+        # Select an `exp` and `rem` which meet `alphabet_size = 2**exp + rem`.
+        # Get the largest `exp` smaller than `alphabet_size`.
+        self.exp = alphabet_size.bit_length() - 1
+        self.rem = alphabet_size - 2 ** self.exp
 
-                else:
-                    node = self.nodes[symbol]
-                    self.update_tree(node)
-                    self.encode_symbol(node, encoded_data)
+        # Initialize the current node # as the maximum number of nodes with
+        # `alphabet_size` leaves in a complete binary tree.
+        self.current_node_num = alphabet_size * 2 - 1
 
-        return encoded_data
+        self.tree = Tree(0, self.current_node_num, data=NYT)
+        self.all_nodes = [self.tree]
+        self.nyt = self.tree  # initialize the NYT reference
 
-    def update_tree(self, node):
-        while node != self.root:
-            parent = node
-            siblings = [node]
+    def encode(self):
+        """Encode the target byte sequence into compressed bit sequence by
+        adaptive Huffman coding.
 
-            while parent is not None:
-                siblings.append(parent)
-                parent = parent.parent
+        Returns:
+            bitarray: The compressed bitarray. Use `bitarray.tofile()` to save
+                to file.
+        """
 
-            min_freq_node = min(siblings, key=lambda x: x.freq)
+        def encode_fixed_code(dec):
+            """Convert a decimal number into specified fixed code.
 
-            if node.freq == min_freq_node.freq:
-                min_freq_node.freq += 1
-                break
-            elif node.freq < min_freq_node.freq:
-                min_freq_node.freq -= 1
-                node.freq += 1
-                break
+            Arguments:
+                dec {int} -- The alphabet need to be converted into fixed code.
 
-            node = min_freq_node
+            Returns:
+                list of bool -- Fixed codes.
+            """
 
-    def encode_symbol(self, node, encoded_data):
-        bit_string = ""
-        while node != self.root:
-            if node.parent.left == node:
-                bit_string += "0"
+            alphabet_idx = dec - (self._alphabet_first_num - 1)
+            if alphabet_idx <= 2 * self.rem:
+                fixed_str = '{:0{padding}b}'.format(
+                    alphabet_idx - 1,
+                    padding=self.exp + 1
+                )
             else:
-                bit_string += "1"
-            node = node.parent
+                fixed_str = '{:0{padding}b}'.format(
+                    alphabet_idx - self.rem - 1,
+                    padding=self.exp
+                )
+            return bin_str2bool_list(fixed_str)
 
-        encoded_data.append(bit_string[::-1])
+        if self.dpcm:
+            self.byte_seq = tuple(encode_dpcm(self.byte_seq))
 
-    def decode_image(self, encoded_data, output_shape):
-        decoded_image = np.zeros(output_shape, dtype=np.uint8)
+        code = []
+        for symbol in self.byte_seq:
+            fixed_code = encode_fixed_code(symbol)
+            result = self.tree.search(fixed_code)
+            if result['first_appearance']:
+                code.extend(result['code'])  # send code of NYT
+                code.extend(fixed_code)  # send fixed code of symbol
+            else:
+                # send code which is path from root to the node of symbol
+                code.extend(result['code'])
+            self.update(fixed_code, result['first_appearance'])
 
-        current_node = self.root
-        bit_index = 0
+        # Add remaining bits length info at the beginning of the code in order
+        # to avoid the decoder regarding the remaining bits as actual data. The
+        # remaining bits length info require 3 bits to store the length. Note
+        # that the first 3 bits are stored as big endian binary string.
+        remaining_bits_length = (
+                bits2bytes(len(code) + 3) * 8 - (len(code) + 3)
+        )
+        code = (bin_str2bool_list('{:03b}'.format(remaining_bits_length))
+                + code)
 
-        for row in range(output_shape[0]):
-            for col in range(output_shape[1]):
-                while current_node.left is not None and current_node.right is not None:
-                    bit = encoded_data[bit_index]
+        return bitarray(code)
 
-                    if bit == "0":
-                        current_node = current_node.left
-                    else:
-                        current_node = current_node.right
+    def decode(self):
+        """Decode the target byte sequence which is encoded by adaptive Huffman
+        coding.
 
-                    bit_index += 1
+        Returns:
+            list: A list of integer representing the number of decoded byte
+                sequence.
+        """
 
-                symbol = current_node.symbol
-                decoded_image[row, col] = symbol
+        def read_bits(bit_count):
+            """Read n leftmost bits and move iterator n steps.
 
-                if symbol not in self.nodes:
-                    self.nodes[symbol] = Node(freq=1, symbol=symbol)
-                    self.update_tree(self.nodes[symbol])
+            Arguments:
+                n {int} -- The # of bits is about to read.
 
-                else:
-                    self.update_tree(self.nodes[symbol])
+            Returns:
+                list -- The n bits has been read.
+            """
 
-                current_node = self.root
+            ret = self._bits[self._bits_idx:self._bits_idx + bit_count]
+            self._bits_idx += bit_count
+            return ret
 
-        return decoded_image
+        def decode_fixed_code():
+            fixed_code = read_bits(self.exp)
+            integer = bool_list2int(fixed_code)
+            if integer < self.rem:
+                fixed_code += read_bits(1)
+                integer = bool_list2int(fixed_code)
+            else:
+                integer += self.rem
+            return integer + 1 + (self._alphabet_first_num - 1)
+
+        # Get boolean list ([True, False, ...]) from bytes.
+        bits = bitarray()
+        bits.frombytes(self.byte_seq)
+        self._bits = bits.tolist()
+        self._bits_idx = 0
+
+        # Remove the remaining bits in the last of bit sequence generated by
+        # bitarray.tofile() to fill up to complete byte size (8 bits). The
+        # remaining bits length could be retrieved by reading the first 3 bits.
+        # Note that the first 3 bits are stored as big endian binary string.
+        remaining_bits_length = bool_list2int(read_bits(3))
+        if remaining_bits_length:
+            del self._bits[-remaining_bits_length:]
+        self._bits = tuple(self._bits)
+
+        code = []
+        while self._bits_idx < len(self._bits):
+            current_node = self.tree  # go to root
+            while current_node.left or current_node.right:
+                bit = read_bits(1)[0]
+                current_node = current_node.right if bit else current_node.left
+            if current_node.data == NYT:
+                first_appearance = True
+                dec = decode_fixed_code()
+                code.append(dec)
+            else:
+                # decode element corresponding to node
+                first_appearance = False
+                dec = current_node.data
+                code.append(current_node.data)
+            self.update(dec, first_appearance)
+
+        return decode_dpcm(code) if self.dpcm else code
+
+    def update(self, data, first_appearance):
+
+        def find_node_data(data):
+            for node in self.all_nodes:
+                if node.data == data:
+                    return node
+            raise KeyError(f'Cannot find the target node given {data}.')
+
+        current_node = None
+        while True:
+            if first_appearance:
+                current_node = self.nyt
+
+                self.current_node_num -= 1
+                new_external = Tree(1, self.current_node_num, data=data)
+                current_node.right = new_external
+                self.all_nodes.append(new_external)
+
+                self.current_node_num -= 1
+                self.nyt = Tree(0, self.current_node_num, data=NYT)
+                current_node.left = self.nyt
+                self.all_nodes.append(self.nyt)
+
+                current_node.weight += 1
+                current_node.data = None
+                self.nyt = current_node.left
+            else:
+                if not current_node:
+                    # First time as `current_node` is None.
+                    current_node = find_node_data(data)
+                node_max_num_in_block = max(
+                    (
+                        n for n in self.all_nodes
+                        if n.weight == current_node.weight
+                    ),
+                    key=operator.attrgetter('num')
+                )
+                if node_max_num_in_block not in (current_node, current_node.parent):
+                    exchange(current_node, node_max_num_in_block)
+                    current_node = node_max_num_in_block
+                current_node.weight += 1
+            if not current_node.parent:
+                break
+            current_node = current_node.parent
+            first_appearance = False
+
+
+def compress(in_filename, out_filename, alphabet_range, dpcm):
+    with open(in_filename, 'rb') as in_file:
+        content = in_file.read()
+
+    ada_huff = AdaptiveHuffman(content, alphabet_range, dpcm)
+    code = ada_huff.encode()
+
+    with open(out_filename, 'wb') as out_file:
+        code.tofile(out_file)
+
+
+def extract(in_filename, out_filename, alphabet_range, dpcm):
+    with open(in_filename, 'rb') as in_file:
+        content = in_file.read()
+    ada_huff = AdaptiveHuffman(content, alphabet_range, dpcm)
+    code = ada_huff.decode()
+
+    with open(out_filename, 'wb') as out_file:
+        out_file.write(bytes(code))
+

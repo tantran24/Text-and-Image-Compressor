@@ -2,15 +2,18 @@ from decimal import getcontext
 
 import pandas as pd
 import streamlit as st
-
 from apps.algorithms import ae
 from apps.algorithms import huffman
+
 
 def get_file_size(file_path):
     with open(file_path, 'rb') as file:
         return len(file.read())
 
+
 global AttributeError
+
+
 def text_compression():
     st.title("Text Compression")
 

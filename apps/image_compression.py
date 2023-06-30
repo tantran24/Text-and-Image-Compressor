@@ -1,7 +1,17 @@
+import cv2
+import numpy as np
 import streamlit as st
 from PIL import Image
 
-from apps.algorithms import adaptive_huffman
+from .algorithms import adaptive_huffman
+from .algorithms.utils.utils import get_raw_img
+
+
+def load_image(img):
+    im = Image.open(img)
+    image = np.array(im)
+    return image
+
 
 def get_file_size(file_path):
     with open(file_path, 'rb') as file:
@@ -12,13 +22,11 @@ def image_compression():
     st.title("Image Compression")
 
     st.markdown("**Upload up to 20 images**")
-    uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'],
+    uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True, type=['jpg', 'jpeg', 'png', 'raw'],
                                       key="image")
 
-    compression_options = ['Adaptive Huffman', 'LWZ']
+    compression_options = ['Adaptive Huffman', 'JPEG']
     compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
-
-    output_path = "compressed_image.bin"
 
     if st.button("Compress"):
         if not uploaded_files:
@@ -26,28 +34,26 @@ def image_compression():
             return
 
         for uploaded_file in uploaded_files:
-            image = Image.open(uploaded_file)
+            # image = Image.open(uploaded_file)
+            # image.save(image_path)
             image_path = f"temp_images/{uploaded_file.name}"
-            image.save(image_path)
 
             if compression_algorithm == 'Adaptive Huffman':
-                ah = adaptive_huffman.AdaptiveHuffman()
-                encoded_data = ah.encode_image(image_path)
+                ah = adaptive_huffman
+                alphabet_range = (0, 255)
+                dpcm = False
+                ah.compress(uploaded_file.name, 'compressed',
+                            alphabet_range=alphabet_range, dpcm=dpcm)
+                ah.extract('compressed', 'extracted.raw',
+                           alphabet_range=alphabet_range, dpcm=dpcm)
 
+                comparison = get_raw_img(uploaded_file.name, 'extracted.raw', size=(512, 512))
 
-                with open(output_path, "wb") as file:
-                    for bit_string in encoded_data:
-                        num_bytes = len(bit_string) // 8
-                        bit_string_padded = bit_string.ljust(num_bytes * 8, "0")
-
-                        for i in range(0, len(bit_string_padded), 8):
-                            byte = int(bit_string_padded[i:i + 8], 2)
-                            file.write(bytes([byte]))
+                st.image(comparison)
 
             elif compression_algorithm == 'LWZ':
                 pass
 
-            st.image(image)
             st.markdown("----")
 
 
