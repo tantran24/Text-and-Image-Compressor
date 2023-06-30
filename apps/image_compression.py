@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import streamlit as st
 from PIL import Image
-
-from .algorithms import adaptive_huffman
+import os
+from .algorithms import adaptive_huffman, lzw
 from .algorithms.utils.utils import get_raw_img
 
 
@@ -25,7 +25,7 @@ def image_compression():
     uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True, type=['jpg', 'jpeg', 'png', 'raw'],
                                       key="image")
 
-    compression_options = ['Adaptive Huffman', 'JPEG']
+    compression_options = ['Adaptive Huffman', 'LZW', 'JPEG']
     compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
 
     if st.button("Compress"):
@@ -34,9 +34,9 @@ def image_compression():
             return
 
         for uploaded_file in uploaded_files:
-            # image = Image.open(uploaded_file)
-            # image.save(image_path)
+            image = Image.open(uploaded_file)
             image_path = f"temp_images/{uploaded_file.name}"
+            image.save(image_path)
 
             if compression_algorithm == 'Adaptive Huffman':
                 ah = adaptive_huffman
@@ -51,8 +51,14 @@ def image_compression():
 
                 st.image(comparison)
 
-            elif compression_algorithm == 'LWZ':
-                pass
+            elif compression_algorithm == 'LZW':
+                compressor = lzw.LZW_IMG(image_path)
+                compressor.compress()
+                before = compressor.original_file_size
+                after = compressor.compressed_file_size
+
+                decompressor = lzw.LZW_IMG(os.path.join("CompressedFiles",uploaded_file.name.split('.')[0] + "_LZWcompressed.txt"))
+                decompressor.decompress()
 
             st.markdown("----")
 
