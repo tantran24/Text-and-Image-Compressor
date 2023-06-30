@@ -30,6 +30,7 @@ def text_compression():
 
     def compress(input_text, name_path=None):
         encoding, encoding_text = " a", " b "
+        decoded_output = " c"
 
         if mode == "Compress":
             if not input_text:
@@ -120,6 +121,24 @@ def text_compression():
                     decoded_msg = "".join(decoded_msg)
                     st.text(f"Decoded Message: {decoded_msg}")
                     st.text(f"Message Decoded Successfully? {input_text == decoded_msg}")
+
+            elif compression_algorithm == 'LZW':
+                if st.button("Decompress"):
+                    compressor = lzw.LZW_TEXT()
+                    decoded_output = compressor.decompress_text(input_text)
+
+                    
+
+            if selection == 'Enter':
+                st.text(f"Decoded output: {decoded_output}")
+
+            elif selection == 'Upload':
+                name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "." + uploaded_file.name.split('.')[1] 
+                text_path_save = f"DecompressedFiles/{name_file_comp}"
+                with open(text_path_save, 'w', encoding="utf-8") as file:    
+                    file.write(decoded_output)
+
+
                     
     if selection == 'Enter':
         input_text = st.text_area("Enter the text to compress:")
@@ -131,7 +150,7 @@ def text_compression():
         for uploaded_file in uploaded_files:
             text_path = f"temp_texts/{uploaded_file.name}"
             input_text = uploaded_file.read()  
-            with open(text_path, 'w') as file:    
+            with open(text_path, 'w', encoding="utf-8") as file:    
                 file.write(input_text.decode())
             input_text = input_text.decode()
             compress(input_text, uploaded_file.name)
