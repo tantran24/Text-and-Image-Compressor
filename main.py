@@ -2,8 +2,8 @@ import streamlit as st
 from PIL import Image
 
 import huffman
-import lz77
-import lzw
+from lz77 import *
+from lzw import *
 import rle
 
 def get_file_size(file_path):
@@ -37,11 +37,22 @@ def text_compression():
             st.table(table_data)
 
         elif compression_algorithm == 'LZ77':
-            pass
+            compressor = LZ77_TEXT()
+            encoding, dict = compressor.compress(input_text)
+            before, after = len(input_text)*8, len(encoding)*8
+            output_text.text(f"Encoded output: {encoding}")
+
         elif compression_algorithm == 'RLE':
             pass
         elif compression_algorithm == 'LZW':
-            pass
+            compressor = LZW_TEXT()
+            encoding = compressor.compress(input_text)
+            encoding_text = compressor.compress_text(input_text)
+            before, after = len(input_text)*8, len(encoding)*8
+            output_text.text(f"Encoded output: {encoding}")
+            st.text(f"Encoded text: {encoding_text}")
+
+
         percent_saved = (1 - after / before) * 100
 
         st.markdown("### Compression Results")
@@ -49,20 +60,24 @@ def text_compression():
         st.text(f"Compressed Size: {after} bits")
         st.text(f"Percent Saved: {percent_saved:.2f}%")
 
+    encoding_text_ = ""
     if st.sidebar.button("Decompress"):
         if input_text:
             if compression_algorithm == 'Huffman':
                 encoding, tree, codes, before, after = huffman.encoding_text(input_text)
                 decoded_output = huffman.decoding_text(encoding, tree)
-            elif compression_algorithm == 'LZ77':
-                pass
+            elif compression_algorithm == 'LZW':
+                compressor = LZW_TEXT()
+                encoding_text_ = compressor.compress_text(input_text)
+                decoded_output = compressor.decompress_text(encoding_text_)
+
             elif compression_algorithm == 'RLE':
                 pass
-            elif compression_algorithm == 'LZW':
+            elif compression_algorithm == 'LZ77':
                 pass
 
-            st.text(f"Encoded output: {encoding}")
-            output_text.text(f"Decoded output: {decoded_output}")
+            st.text(f"Encoded output: {encoding_text_}")
+            st.text(f"Decoded output: {decoded_output}")
 
 
 def image_compression():
@@ -72,8 +87,10 @@ def image_compression():
     uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'],
                                       key="image")
 
-    compression_options = ['Huffman', 'LWZ']
+    compression_options = ['Huffman', 'LWZ', 'LZ77']
     compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
+
+    global before, after
 
     if st.button("Compress"):
         if not uploaded_files:
@@ -86,12 +103,37 @@ def image_compression():
             image.save(image_path)
 
             if compression_algorithm == 'LWZ':
-                pass
+
+                compressor = LZW_IMG(image_path)
+                compressor.compress()
+                before = compressor.original_file_size
+                after = compressor.compressed_file_size
+
+                decompressor = LZW_IMG(os.path.join("CompressedFiles",uploaded_file.name.split('.')[0] + "_LZWcompressed.txt"))
+                decompressor.decompress()
+
+            elif compression_algorithm == 'LZ77':
+                compressor = LZ77_IMG(image_path)
+                compressor.compress()
+                before = compressor.original_file_size
+                after = compressor.compressed_file_size
+
+                decompressor = LZ77_IMG(os.path.join("CompressedFiles",uploaded_file.name.split('.')[0] + "_LZ77compressed.txt"))
+                decompressor.decompress()
+
             elif compression_algorithm == 'Huffman':
                 pass
 
+            percent_saved = (1 - after / before) * 100
+
+            st.markdown("### Compression Results")
+            st.text(f"Original Size: {before} bytes")
+            st.text(f"Compressed Size: {after} bytes")
+            st.text(f"Percent Saved: {percent_saved:.2f}%")
             st.image(image)
             st.markdown("----")
+
+
 
 
 def main():
