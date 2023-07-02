@@ -13,8 +13,6 @@ def get_file_size(file_path):
         return len(file.read())
 
 
-global AttributeError
-
 
 def text_compression():
     st.title("Text Compression")
@@ -22,7 +20,6 @@ def text_compression():
 
     options = ['Enter', 'Upload']
     selection = st.sidebar.selectbox("Select option ", options)
-    input_text = None
     output_text = st.empty()
     check_point = 0       
     compression_options = ['Huffman', 'Arithmetic', 'LZ77', 'LZW']
@@ -31,6 +28,7 @@ def text_compression():
     def compress(input_text, name_path=None):
         encoding, encoding_text = " a", " b "
         decoded_output = " c"
+        frequency_table = {}
 
         if mode == "Compress":
             if not input_text:
@@ -40,26 +38,19 @@ def text_compression():
 
             if compression_algorithm == 'Huffman':
                 if st.button("Compress"):
-
                     HF = huffman.Huffman(input_text)
-
                     encoding, tree, codes, before, after = HF.encode_text()
-
-                    output_text.text(f"Encoded output: {encoding}")
 
                     st.subheader("Encoding Table:")
                     table_data = []
                     for symbol, code in codes.items():
                         table_data.append([symbol, code])
-
                     table = pd.DataFrame(
                         table_data,
                         columns=("Symbol", "Code"))
-
                     st.table(table)
 
                     percent_saved = (1 - after / before) * 100
-
                     st.markdown("### Compression Results")
                     st.text(f"Original Size: {before} bits")
                     st.text(f"Compressed Size: {after} bits")
@@ -70,7 +61,6 @@ def text_compression():
 
                 getcontext().prec = precision
                 if st.button("Compress"):
-                    frequency_table = {}
                     for char in input_text:
                         if char in frequency_table:
                             frequency_table[char] += 1
@@ -116,11 +106,23 @@ def text_compression():
 
             elif compression_algorithm == 'Arithmetic':
                 if st.button("Decompress"):
-                    pass
-                    decoded_msg, decoder = AE.decode(encoded_msg, len(input_text), AE.probability_table)
-                    decoded_msg = "".join(decoded_msg)
-                    st.text(f"Decoded Message: {decoded_msg}")
-                    st.text(f"Message Decoded Successfully? {input_text == decoded_msg}")
+                    msg_length = len(input_text)
+                    for char in input_text:
+                        if char in frequency_table:
+                            frequency_table[char] += 1
+                        else:
+                            frequency_table[char] = 1
+
+                    AE = ae.ArithmeticEncoding(frequency_table=frequency_table)
+
+                    encoded_msg, encoder, interval_min_value, interval_max_value = AE.encode(msg=input_text,
+                                                                                             probability_table=AE.probability_table)
+
+                    decoded_output, decoder = AE.decode(encoded_msg, msg_length, AE.probability_table)
+                    decoded_output = "".join(decoded_output)
+                    st.text(f"Encoded Message: {encoded_msg}")
+                    st.text(f"Message Decoded Successfully? {input_text==decoded_output}")
+
 
             elif compression_algorithm == 'LZW':
                 if st.button("Decompress"):
