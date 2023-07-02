@@ -2,9 +2,7 @@ from decimal import getcontext
 
 import pandas as pd
 import streamlit as st
-from apps.algorithms import ae
-from apps.algorithms import huffman
-from apps.algorithms import lzw
+from apps.algorithms import ae, huffman, lzw, lz77
 
 
 
@@ -89,20 +87,29 @@ def text_compression():
 
             elif compression_algorithm == 'LZW':
                 compressor = lzw.LZW_TEXT()
-                encoding = compressor.compress(input_text)
-                encoding_text = compressor.compress_text(input_text)
-                before, after = len(input_text)*8, len(encoding)*8
+                encoding_code = compressor.compress(input_text)
+                encoding = compressor.compress_text(input_text)
+                before, after = len(input_text)*8, len(encoding_text)*8
+
+            elif compression_algorithm == 'LZ77':
+                searchWindow = st.slider("Enter the search window size:", min_value=1,  step=1)
+                previewWindow = st.slider("Enter the preview window size:", min_value=1,  step=1)
+                if (st.button("Are you sure about that???")):
+                    compressor = lz77.LZ77(searchWindowSize=searchWindow, previewWindowSize = previewWindow) 
+                    encoding = compressor.encode_lz77(input_text)
+                    before, after = len(input_text)*8, len(encoding)*8
 
                 
             if selection == 'Enter':
                 st.text(f"Encoded output: {encoding}")
-                st.text(f"Encoded text: {encoding_text}")
+                if compression_algorithm == 'LZW':
+                    st.text(f"Encoded text: {encoding_code}")
 
             elif selection == 'Upload':
                 name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "." + uploaded_file.name.split('.')[1] 
                 text_path_save = f"CompressedFiles/{name_file_comp}"
                 with open(text_path_save, 'w', encoding="utf-8") as file:    
-                    file.write(str(encoding_text))
+                    file.write(str(encoding))
 
 
         if mode == "Decompress":
@@ -126,6 +133,11 @@ def text_compression():
                 if st.button("Decompress"):
                     compressor = lzw.LZW_TEXT()
                     decoded_output = compressor.decompress_text(input_text)
+            
+            elif compression_algorithm == 'LZ77':
+                if st.button("Decompress"):
+                    compressor = lz77.LZ77()
+                    decoded_output = compressor.decode_lz77(input_text)
 
                     
 
@@ -137,6 +149,9 @@ def text_compression():
                 text_path_save = f"DecompressedFiles/{name_file_comp}"
                 with open(text_path_save, 'w', encoding="utf-8") as file:    
                     file.write(decoded_output)
+
+        st.text("Done!!!")
+
 
 
                     
@@ -154,7 +169,6 @@ def text_compression():
                 file.write(input_text.decode())
             input_text = input_text.decode()
             compress(input_text, uploaded_file.name)
-            st.text("Done!!!")
             
     if check_point == 1:
         return

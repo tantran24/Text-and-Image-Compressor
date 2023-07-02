@@ -3,7 +3,7 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 import os
-from .algorithms import adaptive_huffman, lzw
+from .algorithms import adaptive_huffman, lzw, lz77
 from .algorithms.utils.utils import get_raw_img
 
 
@@ -25,8 +25,12 @@ def image_compression():
     uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True, type=['jpg', 'jpeg', 'png', 'raw'],
                                       key="image")
 
-    compression_options = ['Adaptive Huffman', 'LZW', 'JPEG']
+    compression_options = ['Adaptive Huffman', 'LZW', 'LZ77','JPEG']
     compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
+
+    if compression_algorithm == 'LZ77':
+        searchWindow = st.slider("Enter the search window sze:", min_value=1,  step=1)
+        previewWindow = st.slider("Enter the preview window ize:", min_value=1,  step=1)
 
     if st.button("Compress"):
         if not uploaded_files:
@@ -37,7 +41,6 @@ def image_compression():
             image = Image.open(uploaded_file)
             image_path = f"temp_images/{uploaded_file.name}"
             image.save(image_path)
-
             if compression_algorithm == 'Adaptive Huffman':
                 ah = adaptive_huffman
                 alphabet_range = (0, 255)
@@ -58,6 +61,15 @@ def image_compression():
                 after = compressor.compressed_file_size
 
                 decompressor = lzw.LZW_IMG(os.path.join("CompressedFiles",uploaded_file.name.split('.')[0] + "_LZWcompressed.txt"))
+                decompressor.decompress()
+
+            elif compression_algorithm == 'LZ77':
+                compressor = lz77.LZ77(image_path, searchWindowSize=searchWindow, previewWindowSize=previewWindow)
+                compressor.compress()
+                # before = compressor.original_file_size
+                # after = compressor.compressed_file_size
+
+                decompressor = lz77.LZ77(os.path.join("CompressedFiles",uploaded_file.name.split('.')[0] + "_LZ77compressed.txt"))
                 decompressor.decompress()
 
             st.markdown("----")
