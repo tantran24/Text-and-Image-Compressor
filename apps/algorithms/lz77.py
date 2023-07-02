@@ -33,7 +33,7 @@ class LZ77:
                     break
         return maxLongest, offset
 
-    def encode_lz77(self, text):
+    def encode_lz77(self, text, opt=0):
         encodedNumbers = []
         encodedSizes = []
         encodedLetters = []
@@ -44,7 +44,12 @@ class LZ77:
                 encodedNumbers.append(0)
                 encodedSizes.append(0)
                 encodedLetters.append(text[i])
-                encodeStr += f'0,0,{text[i]},'
+                if opt == 0:
+                    encodeStr += f'0,0,{text[i]},'
+                else:
+                    # encodeStr += f'0,0,{chr(text[i][0])},'
+                    encodeStr += f'0,0,{int(text[i][0])},'
+
                 i = i + 1
             else:
                 previewString = text[i:i+self.previewWindowSize]
@@ -63,6 +68,10 @@ class LZ77:
                         nextLetter = text[i+self.previewWindowSize]
                 else:
                     nextLetter = previewString[result[0]]
+                
+                if opt == 1:
+                    # nextLetter = chr(nextLetter[0])
+                    nextLetter = int(nextLetter[0])
                 if (result[0] == 0):
                     encodedNumbers.append(0)
                     encodedSizes.append(0)
@@ -79,19 +88,45 @@ class LZ77:
         #     encodeStr = encodeStr[:-1]
         return encodeStr
 
-    def decode_lz77(self, encodeStr):
+    def decode_lz77(self, encodeStr, opt=0):
         i = 0
         list_data = encodeStr.split(',')
         decodedString = ""
+        if opt == 1:
+            decodedString = []
         list_data = list_data[:-1]
         while i < len(list_data)/3:
+            character = (list_data[i*3 + 2])
+            if opt == 1:
+                character = int(character)
+
+            # if opt == 1:
+            #     if len(character) == 0:
+            #         character = 32
+            #     else:    
+            #         character = ord(character)
+            # try:
+            #     value = int(list_data[i*3 + 0])
+            #     # sử dụng số nguyên được chuyển đổi
+            #     # print("Converted integer:", value)
+            # except ValueError:
+            #     print("Invalid input. Cannot convert to integer.", list_data[i*3 + 0],"_____",i*3,"____", list_data[i*3 -3 :i*3+4],"___")
             if (int(list_data[i*3 + 0]) == 0):
-                decodedString += (list_data[i*3 + 2])
+                if opt == 1:
+                    decodedString.append(character)
+                else:
+                    decodedString += (character)
             else:
                 currentSize = len(decodedString)
                 for j in range(0, int(list_data[i*3 + 1])):
-                    decodedString += (decodedString[currentSize-int(list_data[i*3 + 0])+j])
-                decodedString += (list_data[i*3 + 2])
+                    if opt == 1:
+                        decodedString.append(decodedString[currentSize-int(list_data[i*3 + 0])+j])
+                    else:
+                        decodedString += (decodedString[currentSize-int(list_data[i*3 + 0])+j])
+                if opt == 1:
+                    decodedString.append(character)
+                else:
+                    decodedString += (character)
             i = i+1
         return decodedString
 
@@ -99,10 +134,13 @@ class LZ77:
 
     def compress(self):
         my_string = np.asarray(Image.open(self.path),np.uint8)
-        stringToEncode = str(my_string.tolist())
+        stringToEncode = (my_string.reshape(-1, 1).tolist())
+        print(stringToEncode[0][0])
+        print(my_string.reshape(1, -1).shape)
+
         self.shape = my_string.shape
         self.string = my_string
-        compressed_data = self.encode_lz77(stringToEncode)
+        compressed_data = self.encode_lz77(stringToEncode, opt = 1)
         print("Compressed file generated as compressed.txt")
         filesplit = str(os.path.basename(self.path)).split('.')
         filename = filesplit[0] + '_LZ77Compressed.txt'
@@ -110,29 +148,45 @@ class LZ77:
 
         if not os.path.isdir(savingDirectory):
             os.makedirs(savingDirectory)
-        with open(os.path.join(savingDirectory,filename),'w+') as file:
+        with open(os.path.join(savingDirectory,filename),'w+', encoding="utf-8") as file:
             file.write(str(compressed_data))
 
         self.compressed_file_size = os.path.getsize(os.path.join(savingDirectory,filename))
         
     def decompress(self):
-        with open(self.path,"r") as file:
+        with open(self.path,"r", encoding="utf-8") as file:
             data_comp = file.read()
 
-        decodedString = self.decode_lz77(data_comp)
-        uncompressed_string ="".join(decodedString)
+        decodedString = self.decode_lz77(data_comp, opt = 1)
+        print("SHAPEEEEEEEEEEEE", np.array(decodedString).shape)
+        digitImageflaten = np.array(decodedString, dtype=np.uint8)
+        digitImage = digitImageflaten.reshape((213, -1, 3))
+        # uncompressed_string ="".join(decodedString)
+        print(digitImage.shape)
+        # temp = re.findall(r'\d+', uncompressed_string)
+        # res = list(map(int, temp))
+        # res = np.array(res)
+        # res = res.astype(np.uint8)
+        # res = np.reshape(res, self.shape)
+        # print(digitImage)
+        my_string = np.asarray(Image.open(os.path.join('temp_images','343751503_627511805903182_6869830517314195489_n.jpg')),np.uint8)
+        # print(my_string)
+        my_stringFlaten = my_string.flatten()
 
-        temp = re.findall(r'\d+', uncompressed_string)
-        res = list(map(int, temp))
-        res = np.array(res)
-        res = res.astype(np.uint8)
-        res = np.reshape(res, self.shape)
 
-        image = Image.fromarray(res)
+        qq= my_string.shape
+        print(qq)
+        a = tuple(qq)
+        print(a)
+        b = tuple((214,213,3))
+        print(b)
+        digitImage = digitImageflaten.reshape(214,213,3)
+
+        image = Image.fromarray(digitImage)
         image.save('_LZ77Decompressed.jpg')
         self.saveImage(image)
-        if self.string.all() == res.all():
-            print("Success")
+        # if self.string.all() == res.all():
+        #     print("Success")
 
 
     def saveImage(self, image):
