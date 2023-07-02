@@ -3,7 +3,7 @@ import os
 import streamlit as st
 from PIL import Image
 
-from .algorithms import lzw
+from .algorithms import adaptive_huffman, lzw, lz77
 
 
 def get_file_size(file_path):
@@ -48,11 +48,16 @@ def decompress_images(compressed_files, decompression_algorithm):
             pass
 
         elif decompression_algorithm == 'LZW':
-            compressed_file_path = f"CompressedFiles/{file_name}"
-            decompressed_file_path = f"DecompressedFiles/{file_name.split('_LZWCompressed.txt')[0]}_LZWDecompressed.jpg"
+            pass
+        elif decompression_algorithm == 'LZ77':
+            compressor = lz77.LZ77(image_path, searchWindowSize=searchWindow, previewWindowSize=previewWindow)
+            compressor.compress()
+            # before = compressor.original_file_size
+            # after = compressor.compressed_file_size
 
-            decompressed_image = lzw.decompress(compressed_file_path, decompressed_file_path)
-            decompressed_images.append(decompressed_image)
+            decompressor = lz77.LZ77(
+                os.path.join("CompressedFiles", uploaded_file.name.split('.')[0] + "_LZ77compressed.txt"))
+            decompressor.decompress()
 
     return decompressed_images
 
