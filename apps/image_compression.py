@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 from PIL import Image
+
 from .algorithms import adaptive_huffman, lzw
 
 def compress_images(uploaded_files, compression_algorithm):
@@ -58,25 +59,29 @@ def image_compression():
         uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True,
                                           type=['jpg', 'jpeg', 'png'], key="image")
 
-        compression_options = ['Adaptive Huffman', 'LZW']
-        compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
+    compression_options = ['Adaptive Huffman', 'LZW', 'LZ77','JPEG']
+    compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
 
-        if st.button("Compress"):
-            if not uploaded_files:
-                st.warning("Please upload at least one image.")
-                return
+    if compression_algorithm == 'LZ77':
+        searchWindow = st.slider("Enter the search window sze:", min_value=1,  step=1)
+        previewWindow = st.slider("Enter the preview window ize:", min_value=1,  step=1)
 
-            compressed_files = compress_images(uploaded_files, compression_algorithm)
+    if st.button("Compress"):
+        if not uploaded_files:
+            st.warning("Please upload at least one image.")
+            return
 
-            st.markdown("----")
-            st.success("Compression completed!")
-            st.markdown("**Download compressed files:**")
-            for compressed_file in compressed_files:
-                st.download_button(
-                    label="DOWNLOAD " + os.path.basename(compressed_file),
-                    data=compressed_file,
-                    file_name=os.path.basename(compressed_file)
-                )
+        compressed_files = compress_images(uploaded_files, compression_algorithm)
+
+        st.markdown("----")
+        st.success("Compression completed!")
+        st.markdown("**Download compressed files:**")
+        for compressed_file in compressed_files:
+            st.download_button(
+                label="DOWNLOAD " + os.path.basename(compressed_file),
+                data=compressed_file,
+                file_name=os.path.basename(compressed_file)
+            )
 
     elif mode == 'Decompress':
         st.markdown("**Upload compressed files**")
@@ -91,6 +96,15 @@ def image_compression():
                 return
 
             decompressed_images = decompress_images(compressed_files, decompression_algorithm)
+
+            elif compression_algorithm == 'LZ77':
+                compressor = lz77.LZ77(image_path, searchWindowSize=searchWindow, previewWindowSize=previewWindow)
+                compressor.compress()
+                # before = compressor.original_file_size
+                # after = compressor.compressed_file_size
+
+                decompressor = lz77.LZ77(os.path.join("CompressedFiles",uploaded_file.name.split('.')[0] + "_LZ77compressed.txt"))
+                decompressor.decompress()
 
             st.markdown("----")
             st.success("Decompression completed!")
