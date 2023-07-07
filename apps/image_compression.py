@@ -13,7 +13,6 @@ def get_file_size(file_path):
 def compress_images(uploaded_files, compression_algorithm, searchWindow=6, previewWindow=6):
     compressed_files = []
 
-
     for uploaded_file in uploaded_files:
         image = Image.open(uploaded_file)
         image_path = f"temp_images/{uploaded_file.name}"
@@ -22,41 +21,39 @@ def compress_images(uploaded_files, compression_algorithm, searchWindow=6, previ
         # original_file_size = get_file_size(image_path)
         original_file_size = 1
         if compression_algorithm == 'Adaptive Huffman':
-            compressor = adaptive_huffman.AdaptiveHuffman_IMG(image_path)
-            compressed_file = f"CompressedFiles/{os.path.splitext(uploaded_file.name)[0]}.txt"
-            compressor.compress()
-            os.makedirs(os.path.dirname(compressed_file), exist_ok=True)
-            os.rename(
-                os.path.join(os.getcwd(), "CompressedFiles", f"{os.path.splitext(uploaded_file.name)[0]}_AdaptiveHuffmanCompressed.txt"),
-                compressed_file)
-            compressed_file = f"CompressedFiles/{os.path.splitext(uploaded_file.name)[0]}_AdaptiveHuffmanCompressed.txt"
+            with open(image_path, 'rb') as f:
+                compressor = adaptive_huffman.AdaptiveHuffman(file=f)
+            compressed_file = compressor.compress()
+            # compressor = adaptive_huffman.AdaptiveHuffman(image_path)
+            # compressed_file = compressor.compress()
 
         elif compression_algorithm == 'LZW':
             compressor = lzw.LZW_IMG(image_path)
             compressed_file = compressor.compress()
 
         elif compression_algorithm == 'LZ77':
-            compressor = lz77.LZ77(path = image_path, searchWindowSize=searchWindow, previewWindowSize=previewWindow)
+            compressor = lz77.LZ77(path=image_path, searchWindowSize=searchWindow, previewWindowSize=previewWindow)
             compressed_file = compressor.compress()
-        
+
         # compressed_file_size = get_file_size(compressed_file)
-        compressed_file_size=1
+        compressed_file_size = 1
         compression_ratio = original_file_size / compressed_file_size
         compression_percent = (1 - compressed_file_size / original_file_size) * 100
 
         compressed_files.append((compressed_file, original_file_size, compressed_file_size, compression_ratio,
-                                    compression_percent))
+                                 compression_percent))
     return compressed_files
 
 
 def decompress_images(compressed_files, decompression_algorithm):
     decompressed_images = []
-    
+
     for compressed_file in compressed_files:
         file_name = compressed_file.name
 
         if decompression_algorithm == 'Adaptive Huffman':
-            pass
+            decompressor = adaptive_huffman.AdaptiveHuffman(compressed_file)
+            decompressed_image = decompressor.decompress()
         elif decompression_algorithm == 'LZW':
             decompressor = lzw.LZW_IMG(compressed_file)
             decompressed_image = decompressor.decompress()
@@ -73,9 +70,7 @@ def image_compression():
     st.title("Image Compression")
 
     mode_options = ['Compress', 'Decompress']
-    mode = st.selectbox("Select mode", mode_options)
-
-    
+    mode = st.sidebar.radio("Select mode", mode_options)
 
     if mode == 'Compress':
         st.markdown("**Upload up to 20 images**")
@@ -85,8 +80,8 @@ def image_compression():
         compression_options = ['Adaptive Huffman', 'LZW', 'LZ77', 'JPEG']
         compression_algorithm = st.selectbox("Select compression algorithm", compression_options)
         if compression_algorithm == 'LZ77':
-            searchWindow = st.slider("Enter the search window size:", min_value=1,  step=1)
-            previewWindow = st.slider("Enter the preview window size:", min_value=1,  step=1)
+            searchWindow = st.slider("Enter the search window size:", min_value=1, step=1)
+            previewWindow = st.slider("Enter the preview window size:", min_value=1, step=1)
 
         if st.button("Compress"):
             if not uploaded_files:
@@ -94,8 +89,9 @@ def image_compression():
                 return
             if compression_algorithm == 'LZ77':
                 compressed_files = compress_images(uploaded_files, compression_algorithm, searchWindow, previewWindow)
+            else:
+                compressed_files = compress_images(uploaded_files, compression_algorithm)
 
-            compressed_files = compress_images(uploaded_files, compression_algorithm)
             st.markdown("**Download compressed files:**")
             for compressed_file in compressed_files:
                 # st.markdown(f"**File Name:** {compressed_file.name}")
@@ -107,7 +103,7 @@ def image_compression():
                 st.download_button(
                     label="Download",
                     data=compressed_file[0],
-                    file_name="1"
+                    file_name="1.txt"
                 )
                 st.markdown("---")
 

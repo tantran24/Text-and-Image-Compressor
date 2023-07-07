@@ -1,194 +1,138 @@
-from PIL import Image
 import os
+import re
 import numpy as np
+from PIL import Image
 
 
-class AdaptiveHuffman_IMG:
-    def __init__(self, path):
+class AdaptiveHuffman:
+    class Node:
+        def __init__(self, symbol=None, weight=0, parent=None, left=None, right=None):
+            self.symbol = symbol
+            self.weight = weight
+            self.parent = parent
+            self.left = left
+            self.right = right
+
+    def __init__(self, file=None, path=None):
         self.path = path
-        self.original_file_size = os.path.getsize(path)
+        if file is not None:
+            self.file = file
 
-    def compress(self):
-        self.initCompress()
-        compressedColors = []
-        print("Compressing Image ...")
-        compressedColors.append(self.compressColor(self.red))
-        print("Compressing Image ...")
-        compressedColors.append(self.compressColor(self.green))
-        print("Compressing Image ...")
-        compressedColors.append(self.compressColor(self.blue))
-        print("Image Compressed --------- Writing to File")
-        filesplit = os.path.basename(self.path).split('.')
-        filename = filesplit[0] + '_AdaptiveHuffmanCompressed.txt'
-        savingDirectory = os.path.join(os.getcwd(), 'CompressedFiles')
-        if not os.path.isdir(savingDirectory):
-            os.makedirs(savingDirectory)
-        with open(os.path.join(savingDirectory, filename), 'w') as file:
-            for color in compressedColors:
-                for row in color:
-                    file.write(row)
-                    file.write("\n")
-        self.compressed_file_size = os.path.getsize(os.path.join(savingDirectory, filename))
-
-    def compressColor(self, colorList):
-        compressedColor = []
-        for currentRow in colorList:
-            compressedRow = ""
-            freq_dict = {}
-            huff_tree = HuffmanTree()
-            for char in currentRow:
-                if char not in freq_dict:
-                    freq_dict[char] = 1
-                else:
-                    freq_dict[char] += 1
-                compressedChar = huff_tree.encode(char)
-                compressedRow += compressedChar
-            compressedColor.append(compressedRow)
-        return compressedColor
-
-    def decompress(self):
-        print("Decompressing File ...")
-        image = []
-        with open(self.path, "r") as file:
-            for line in file:
-                decodedRow = self.decompressRow(line)
-                image.append(np.array(decodedRow))
-        image = np.array(image)
-        shapeTup = image.shape
-        image = image.reshape((3, shapeTup[0] // 3, shapeTup[1]))
-        self.saveImage(image)
-        print("Decompression Done.")
-
-    def decompressRow(self, line):
-        currentRow = line.split(",")
-        currentRow[-1] = currentRow[-1][:-1]
-        decodedRow = ""
-        huff_tree = HuffmanTree()
-        for code in currentRow:
-            decodedChar = huff_tree.decode(code)
-            decodedRow += decodedChar
-            huff_tree.update(decodedChar)
-        newRow = decodedRow.split(',')
-        decodedRow = [int(x) for x in newRow]
-        return decodedRow
-
-    def initCompress(self):
-        self.image = Image.open(self.path)
-        self.height, self.width = self.image.size
-        self.red, self.green, self.blue = self.processImage()
-
-    def processImage(self):
-        image = self.image.convert('RGB')
-        red, green, blue = [], [], []
-        pixel_values = list(image.getdata())
-        iterator = 0
-        for height_index in range(self.height):
-            R, G, B = "", "", ""
-            for width_index in range(self.width):
-                RGB = pixel_values[iterator]
-                R = R + str(RGB[0]) + ","
-                G = G + str(RGB[1]) + ","
-                B = B + str(RGB[2]) + ","
-                iterator += 1
-            red.append(R[:-1])
-            green.append(G[:-1])
-            blue.append(B[:-1])
-        return red, green, blue
-
-    def saveImage(self, image):
-        print("Saving Decompressed File...")
-        filesplit = os.path.basename(self.path).split('_AdaptiveHuffmanCompressed.txt')
-        filename = filesplit[0] + "_AdaptiveHuffmanDecompressed.jpg"
-        savingDirectory = os.path.join(os.getcwd(), 'DecompressedFiles')
-        if not os.path.isdir(savingDirectory):
-            os.makedirs(savingDirectory)
-        imagelist, imagesize = self.makeImageData(image[0], image[1], image[2])
-        imagenew = Image.new('RGB', imagesize)
-        imagenew.putdata(imagelist)
-        imagenew.save(os.path.join(savingDirectory, filename))
-
-    def makeImageData(self, r, g, b):
-        imagelist = []
-        for i in range(len(r)):
-            for j in range(len(r[0])):
-                imagelist.append((r[i][j], g[i][j], b[i][j]))
-        return imagelist, (len(r), len(r[0]))
-
-
-class HuffmanNode:
-    def __init__(self, char, frequency):
-        self.char = char
-        self.frequency = frequency
-        self.left = None
-        self.right = None
-
-
-class HuffmanTree:
-    def __init__(self):
-        self.root = HuffmanNode(None, 0)
+        self.data = None
+        self.tree = None
         self.dictionary = {}
+        self.next_code = 0
 
-    def encode(self, char):
-        if char not in self.dictionary:
-            code = self.generate_code(char)
-            self.dictionary[char] = code
-            return code
+    def initialize_tree(self):
+        self.tree = self.Node(weight=0)
+        self.dictionary = {}
+        self.next_code = 0
+
+    def update_tree(self, symbol):
+        if symbol in self.dictionary:
+            node = self.dictionary[symbol]
+            while node.parent is not None:
+                node.weight += 1
+                node = node.parent
+            node.weight += 1
         else:
-            return self.dictionary[char]
+            if self.tree.left is None:
+                new_node = self.Node(symbol=symbol, weight=1, parent=self.tree, left=None, right=None)
+                self.tree.left = new_node
+                self.dictionary[symbol] = new_node
+                self.next_code += 1
+                self.check_node(new_node)
+            else:
+                node = self.tree.left
+                while node.right is not None:
+                    node = node.right
+                new_node = self.Node(symbol=symbol, weight=1, parent=node.parent, left=None, right=None)
+                node.right = new_node
+                self.dictionary[symbol] = new_node
+                self.next_code += 1
+                self.check_node(new_node)
 
-    def generate_code(self, char):
-        node = self.root
+    def check_node(self, node):
+        while node is not None:
+            max_weight_node = self.get_max_weight_node(node)
+            if max_weight_node is not None and max_weight_node is not node:
+                self.swap_nodes(node, max_weight_node)
+            node = node.parent
+
+    def get_max_weight_node(self, node):
+        max_weight_node = None
+        if node is not None and node.parent is not None:
+            if node.parent.left is not None:
+                max_weight_node = node.parent.left
+            if node.parent.right is not None and node.parent.right.weight > max_weight_node.weight:
+                max_weight_node = node.parent.right
+        return max_weight_node
+
+    def swap_nodes(self, node1, node2):
+        node1.symbol, node2.symbol = node2.symbol, node1.symbol
+        self.dictionary[node1.symbol], self.dictionary[node2.symbol] = self.dictionary[node2.symbol], self.dictionary[node1.symbol]
+
+    def encode_adaptive_huffman(self, text):
+        self.initialize_tree()
+        encoded_numbers = []
+        encoded_letters = []
+        encode_str = ""
+        for symbol in text:
+            if symbol in self.dictionary:
+                node = self.dictionary[symbol]
+                code = self.get_code(node)
+                encoded_numbers.append(code)
+                encoded_letters.append("")
+                encode_str += str(code) + ","
+                self.update_tree(symbol)
+            else:
+                encoded_numbers.append(self.next_code)
+                encoded_letters.append(symbol)
+                encode_str += str(self.next_code) + "," + symbol + ","
+                self.update_tree(symbol)
+        return encode_str
+
+    def get_code(self, node):
         code = ""
-        while node.char is not None:
-            if char in node.left.char:
-                code += "0"
-                node = node.left
-            elif char in node.right.char:
-                code += "1"
-                node = node.right
+        while node.parent is not None:
+            if node.parent.left is node:
+                code = "0" + code
+            else:
+                code = "1" + code
+            node = node.parent
         return code
 
-    def decode(self, code):
-        node = self.root
-        for bit in code:
-            if bit == "0":
-                node = node.left
-            elif bit == "1":
-                node = node.right
-        return node.char
-
-    def update(self, char):
-        node = self.root
-        while node.char is not None:
-            if char in node.left.char:
-                node = node.left
-            elif char in node.right.char:
-                node = node.right
-        new_node = HuffmanNode(char, 1)
-        left_node = HuffmanNode(node.char, node.frequency)
-        node.char = None
-        node.frequency += 1
-        node.left = left_node
-        node.right = new_node
-
-        if left_node.frequency > new_node.frequency:
-            node.left, node.right = node.right, node.left
-        self.rebalance(node)
-
-    def rebalance(self, node):
-        while node.char is None:
-            left_frequency = node.left.frequency if node.left is not None else float("inf")
-            right_frequency = node.right.frequency if node.right is not None else float("inf")
-            min_child = node.left if left_frequency <= right_frequency else node.right
-            if min_child.frequency < node.frequency:
-                node.left, node.right = node.right, node.left
-                node.char = min_child.char
-                min_child.char = None
-                min_child.frequency = 0
-                node.frequency += 1
-                node = min_child
+    def decode_adaptive_huffman(self, encode_str):
+        encoded_data = encode_str.split(",")
+        decoded_string = ""
+        i = 0
+        while i < len(encoded_data):
+            code = int(encoded_data[i])
+            if code in self.dictionary:
+                symbol = self.dictionary[code].symbol
+                decoded_string += symbol
+                self.update_tree(symbol)
             else:
-                node.frequency += 1
-                node = node.parent
-                if node is None:
-                    break
+                symbol = encoded_data[i + 1]
+                decoded_string += symbol
+                self.update_tree(symbol)
+                i += 1
+            i += 1
+        return decoded_string
+
+    def compress(self):
+        image = Image.open(self.path)
+        data = np.array(image, dtype=np.uint8)
+        string_to_encode = data.tobytes()
+        compressed_data = self.encode_adaptive_huffman(string_to_encode)
+        return compressed_data
+
+    def decompress(self):
+        data_comp = self.file
+        decoded_string = self.decode_adaptive_huffman(data_comp)
+        decompressed_image = Image.frombytes('RGB', self.get_image_size(), decoded_string)
+        return decompressed_image
+
+    def get_image_size(self):
+        with Image.open(self.path) as image:
+            return image.size
