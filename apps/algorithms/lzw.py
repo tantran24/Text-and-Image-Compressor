@@ -1,4 +1,5 @@
 from struct import *
+from io import StringIO
 
 class LZW_TEXT:
     def __init__(self, path=""):
@@ -71,11 +72,12 @@ import os
 import numpy as np
 
 class LZW_IMG:
-    def __init__(self, path):
+    def __init__(self, file, path=''):
         self.path = path
+        self.file = StringIO(file.getvalue().decode("utf-8"))
         self.compressionDictionary, self.compressionIndex = self.createCompressionDict()
         self.decompressionDictionary, self.decompressionIndex = self.createDecompressionDict()
-        self.original_file_size = os.path.getsize(path)
+        # self.original_file_size = os.path.getsize(path)
 
     
     ''''''
@@ -92,18 +94,23 @@ class LZW_IMG:
         print("Compressing Image ...")
         compressedcColors.append(self.compressColor(self.blue))
         print("Image Compressed --------- Writing to File")
-        filesplit = str(os.path.basename(self.path)).split('.')
-        filename = filesplit[0] + '_LZWCompressed.txt'
-        savingDirectory = os.path.join(os.getcwd(),'CompressedFiles')
-        if not os.path.isdir(savingDirectory):
-            os.makedirs(savingDirectory)
-        with open(os.path.join(savingDirectory,filename),'w') as file:
-            for color in compressedcColors:
-                for row in color:
-                    file.write(row)
-                    file.write("\n")
-        self.compressed_file_size = os.path.getsize(os.path.join(savingDirectory,filename))
+        # filesplit = str(os.path.basename(self.path)).split('.')
+        # filename = filesplit[0] + '_LZWCompressed.txt'
+        # savingDirectory = os.path.join(os.getcwd(),'CompressedFiles')
+        # if not os.path.isdir(savingDirectory):
+        #     os.makedirs(savingDirectory)
+        # with open(os.path.join(savingDirectory,filename),'w') as file:
+        #     for color in compressedcColors:
+        #         for row in color:
+        #             file.write(row)
+        #             file.write("\n")
 
+        compressed_data = ""
+        for color in compressedcColors:
+            for row in color:
+                compressed_data += row
+                compressed_data += "\n"
+        return compressed_data
                 
     def compressColor(self, colorList):
         compressedColor = []
@@ -133,15 +140,20 @@ class LZW_IMG:
     def decompress(self):
         print("Decompressing File ...")
         image = []
-        with open(self.path,"r") as file:
-            for line in file:
-                decodedRow = self.decompressRow(line)
-                image.append(np.array(decodedRow))
+        # with open("CompressedFiles\C.txt","r") as file:
+        for line in self.file:
+            decodedRow = self.decompressRow(str(line))
+            image.append(np.array(decodedRow))
+            
         image = np.array(image)
         shapeTup = image.shape
         image = image.reshape((3,shapeTup[0]//3,shapeTup[1]))
-        self.saveImage(image)
-        print("Decompression Done.")  
+
+        imagelist,imagesize = self.makeImageData(image[0],image[1],image[2])
+        imagenew = Image.new('RGB',imagesize)
+        imagenew.putdata(imagelist)
+
+        return imagenew
 
     def decompressRow(self,line):
         currentRow = line.split(",")
