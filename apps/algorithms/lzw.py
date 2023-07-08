@@ -5,8 +5,8 @@ class LZW_TEXT:
     def __init__(self, path=""):
         pass
 
-    def compress(self, data, maximum_table_size=1000):
-        dictionary_size = 256                   
+    def compress(self, data, maximum_table_size=9000):
+        dictionary_size = 8000                   
         dictionary = {chr(i): i for i in range(dictionary_size)}    
         string = ""             # String is null.
         compressed_data = []    # variable to store the compressed data.
@@ -30,11 +30,11 @@ class LZW_TEXT:
         return compressed_data
 
 
-    def decompress(self, compressed_data, dictionary_size=256):
-        dictionary_size = 256
+    def decompress(self, compressed_data):
+        dictionary_size = 8000
         dictionary = dict([(x, chr(x)) for x in range(dictionary_size)])
 
-        next_code = 256
+        next_code = dictionary_size
         decompressed_data = ""
         string = ""
         for code in compressed_data:
@@ -67,14 +67,16 @@ class LZW_TEXT:
         return self.decompress(compressed_text)
 
 
+
 from PIL import Image
 import os
 import numpy as np
 
 class LZW_IMG:
-    def __init__(self, file, path=''):
+    def __init__(self, file=None, path=''):
         self.path = path
-        self.file = StringIO(file.getvalue().decode("utf-8"))
+        if file != None:
+            self.file = StringIO(file.getvalue().decode("utf-8"))
         self.compressionDictionary, self.compressionIndex = self.createCompressionDict()
         self.decompressionDictionary, self.decompressionIndex = self.createDecompressionDict()
         # self.original_file_size = os.path.getsize(path)

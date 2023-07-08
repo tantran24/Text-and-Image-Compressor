@@ -77,7 +77,7 @@ def text_compression():
 
             elif compression_algorithm == 'LZW':
                 compressor = lzw.LZW_TEXT()
-                encoding_code = compressor.compress(input_text)
+                # encoding_code = compressor.compress(input_text)
                 encoding = compressor.compress_text(input_text)
                 before, after = len(input_text)*8, len(encoding_text)*8
 
@@ -92,8 +92,8 @@ def text_compression():
                 
             if selection == 'Enter':
                 st.text(f"Encoded output: {encoding}")
-                if compression_algorithm == 'LZW':
-                    st.text(f"Encoded text: {encoding_code}")
+                # if compression_algorithm == 'LZW':
+                #     st.text(f"Encodeding: {encoding_code}")
 
             elif selection == 'Upload':
                 name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "." + uploaded_file.name.split('.')[1] 

@@ -51,9 +51,9 @@ class LZ77:
                 encodedSizes.append(0)
                 encodedLetters.append(text[i])
                 if opt == 0:
-                    encodeStr += f'0,0,{text[i]},'
+                    encodeStr += f'0`0`{text[i]}`'
                 else:
-                    encodeStr += f'0,0,{int(text[i][0])},'
+                    encodeStr += f'0`0`{int(text[i][0])}`'
 
                 i = i + 1
             else:
@@ -75,31 +75,26 @@ class LZ77:
                     nextLetter = previewString[result[0]]
                 
                 if opt == 1:
-                    try:
-                        nextLetter = int(nextLetter[0])
-                    except:
-                        print("_______________-", i, text[i],)
-                        print("fkkewjfwjfoaijewoifjaergjfgkaerjgkerglkerjgkerjg__", nextLetter)
+                    nextLetter = int(nextLetter[0])
+
                 if (result[0] == 0):
                     encodedNumbers.append(0)
                     encodedSizes.append(0)
                     encodedLetters.append(nextLetter)
-                    encodeStr += f'0,0,{nextLetter},'
+                    encodeStr += f'0`0`{nextLetter}`'
                 else:
                     encodedNumbers.append(searchWindowOffset - result[1])
                     encodedSizes.append(result[0])
                     encodedLetters.append(nextLetter)
-                    encodeStr += f'{searchWindowOffset - result[1]},{result[0]},{nextLetter},'
+                    encodeStr += f'{searchWindowOffset - result[1]}`{result[0]}`{nextLetter}`'
                 i = i + result[0] + 1
-        # encodeStr = encodeStr[:-1]
-        # if "," == encodeStr[-1]:
-        #     encodeStr = encodeStr[:-1]
+
         return encodeStr
 
     def decode_lz77(self, encodeStr, opt=0):
         i = 0
         print(encodeStr[:10])
-        list_data = encodeStr.split(',')
+        list_data = encodeStr.split('`')
         print(list_data[-10:])
         decodedString = ""
         if opt == 1:
@@ -113,7 +108,10 @@ class LZ77:
                 if character != "":
                     character = int(character)
                 
-          
+            try:
+                a = int(list_data[i*3 + 0])
+            except:
+                print("_________________________",list_data[i*3 -2:i*3+2],"___________")
             if (int(list_data[i*3 + 0]) == 0):
                 if opt == 1:
                     decodedString.append(character)
@@ -174,9 +172,12 @@ class LZ77:
 
 
         print(shape)
-        digitImage = digitImageflaten.reshape(int(shape[0]),int(shape[1][:-1]),3)
+        if len(digitImageflaten) == int(shape[0]) * int(shape[1][:-1]):
+            digitImage = digitImageflaten.reshape(int(shape[0]),int(shape[1][:-1]))
+        else:
+            digitImage = digitImageflaten.reshape(int(shape[0]),int(shape[1][:-1]),3)
 
-        image = Image.fromarray(digitImage)
+        image = Image.fromarray(digitImage.astype(np.uint8))
         # image.save('_LZ77Decompressed.jpg')
         # self.saveImage(image)
         # if self.string.all() == res.all():
