@@ -5,8 +5,8 @@ class LZW_TEXT:
     def __init__(self, path=""):
         pass
 
-    def compress(self, data, maximum_table_size=9000):
-        dictionary_size = 8000                   
+    def compress(self, data, maximum_table_size=15000):
+        dictionary_size = 9000                   
         dictionary = {chr(i): i for i in range(dictionary_size)}    
         string = ""             # String is null.
         compressed_data = []    # variable to store the compressed data.
@@ -31,7 +31,7 @@ class LZW_TEXT:
 
 
     def decompress(self, compressed_data):
-        dictionary_size = 8000
+        dictionary_size = 9000
         dictionary = dict([(x, chr(x)) for x in range(dictionary_size)])
 
         next_code = dictionary_size

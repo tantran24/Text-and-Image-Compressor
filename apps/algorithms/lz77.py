@@ -43,7 +43,7 @@ class LZ77:
         encodedSizes = []
         encodedLetters = []
         encodeStr = ""
-        print(text[:30])
+
         i = 0
         while i < len(text):
             if i < self.previewWindowSize:
@@ -75,7 +75,10 @@ class LZ77:
                     nextLetter = previewString[result[0]]
                 
                 if opt == 1:
-                    nextLetter = int(nextLetter[0])
+                    try:
+                        nextLetter = int(nextLetter[0])
+                    except:
+                        continue
 
                 if (result[0] == 0):
                     encodedNumbers.append(0)
@@ -158,7 +161,7 @@ class LZ77:
         #     file.write(str(compressed_data))
 
         # self.compressed_file_size = os.path.getsize(os.path.join(savingDirectory,filename))
-        return compressed_data+","+str(shape[0])+","+str(shape[1])
+        return compressed_data+"`"+str(shape[0])+"`"+str(shape[1])
 
         
     def decompress(self):
