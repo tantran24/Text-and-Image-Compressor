@@ -15,7 +15,7 @@ class AdaptiveHuffman:
 
     def __init__(self, path=None, file=None):
         self.path = path
-        if file != None:
+        if file is not None:
             self.file = str(file.read())[2:]
 
         self.data = None
@@ -72,22 +72,25 @@ class AdaptiveHuffman:
         node1.symbol, node2.symbol = node2.symbol, node1.symbol
         self.dictionary[node1.symbol], self.dictionary[node2.symbol] = self.dictionary[node2.symbol], self.dictionary[node1.symbol]
 
-    def decode_adaptive_huffman(self, encoded_data):
-        decoded_string = ""
-        i = 0
-        while i < len(encoded_data):
-            code = int(encoded_data[i])
-            if code in self.dictionary:
-                symbol = self.dictionary[code].symbol
-                decoded_string += symbol
+    def encode_adaptive_huffman(self, text):
+        self.initialize_tree()
+        encoded_numbers = []
+        encoded_letters = []
+        encode_str = ""
+        for symbol in text:
+            if symbol in self.dictionary:
+                node = self.dictionary[symbol]
+                code = self.get_code(node)
+                encoded_numbers.append(code)
+                encoded_letters.append("")
+                encode_str += str(code) + ","
                 self.update_tree(symbol)
             else:
-                symbol = encoded_data[i + 1]
-                decoded_string += symbol
+                encoded_numbers.append(self.next_code)
+                encoded_letters.append(symbol)
+                encode_str += str(self.next_code) + "," + str(symbol) + ","
                 self.update_tree(symbol)
-                i += 1
-            i += 1
-        return decoded_string
+        return encode_str
 
     def get_code(self, node):
         code = ""
@@ -100,7 +103,8 @@ class AdaptiveHuffman:
         return code
 
     def decode_adaptive_huffman(self, encode_str):
-        encoded_data = encode_str.split(",")[:-1]  # Exclude the last empty element
+        self.initialize_tree()
+        encoded_data = encode_str.split(", ")
         decoded_string = ""
         i = 0
         while i < len(encoded_data):
@@ -125,14 +129,11 @@ class AdaptiveHuffman:
         return compressed_data
 
     def decompress(self):
-        self.initialize_tree()
         data_comp = self.file
         decoded_string = self.decode_adaptive_huffman(data_comp)
-        # decompressed_image = Image.frombytes('RGB', self.get_image_size(), decoded_string)
-        digitImageflaten = np.array(decoded_string, dtype=np.uint8)
-        shape =(512, 512)
-        digitImage = digitImageflaten.reshape(int(shape[0]), int(shape[1][:-1]), 3)
-        decompressed_image = Image.fromarray(digitImage)
+        decompressed_data = decoded_string.encode()
+        image_size = self.get_image_size()
+        decompressed_image = Image.frombytes('RGB', image_size, decompressed_data)
         return decompressed_image
 
     def get_image_size(self):

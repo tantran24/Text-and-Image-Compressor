@@ -52,7 +52,7 @@ def decompress_images(compressed_files, decompression_algorithm):
             decompressor = adaptive_huffman.AdaptiveHuffman(file=compressed_file)
             decompressed_image = decompressor.decompress()
         elif decompression_algorithm == 'LZW':
-            decompressor = lzw.LZW_IMG(compressed_file)
+            decompressor = lzw.LZW_IMG(file=    compressed_file)
             decompressed_image = decompressor.decompress()
         elif decompression_algorithm == 'LZ77':
             decompressor = lz77.LZ77(file=compressed_file)
