@@ -3,7 +3,7 @@ import subprocess
 
 import streamlit as st
 from PIL import Image
-
+import sys
 from .algorithms import adaptive_huffman, lzw, lz77
 
 
@@ -48,12 +48,12 @@ def compress_images(uploaded_files, compression_algorithm, searchWindow=6, previ
             elif compression_algorithm == 'LZW':
                 compressor = lzw.LZW_IMG(path=image_path)
                 compressed_file = compressor.compress()
-                compressed_file_size = get_file_size(compressed_file)
+                compressed_file_size = sys.getsizeof(str(compressed_file))
 
             elif compression_algorithm == 'LZ77':
                 compressor = lz77.LZ77(path=image_path, searchWindowSize=searchWindow, previewWindowSize=previewWindow)
                 compressed_file = compressor.compress()
-                compressed_file_size = get_file_size(compressed_file)
+                compressed_file_size = sys.getsizeof(str(compressed_file))
 
             elif compression_algorithm == 'JPG':
                 encodeJPG(file_name)
@@ -74,9 +74,7 @@ def decompress_images(compressed_files, decompression_algorithm):
     decompressed_images = []
 
     for compressed_file in compressed_files:
-        file_name = str(compressed_file.name)
-        with open(file_name, "wb") as f:
-            f.write(compressed_file.read())
+        
 
         if decompression_algorithm == 'Adaptive Huffman':
             input_path = f"CompressedFiles/{compressed_file.name}"
@@ -91,6 +89,9 @@ def decompress_images(compressed_files, decompression_algorithm):
             decompressor = lz77.LZ77(file=compressed_file)
             decompressed_image = decompressor.decompress()
         elif decompression_algorithm == 'JPG':
+            file_name = str(compressed_file.name)
+            with open(file_name, "wb") as f:
+                f.write(compressed_file.read())
             decodeJPG(file_name)
             decompressed_image = Image.open(os.path.splitext(file_name)[0] + ".bmp")
 
@@ -132,6 +133,7 @@ def image_compression():
                 st.markdown(f"**Compressed File Size:** {compressed_file[2]} bytes")
                 st.markdown(f"**Compression Ratio:** {compressed_file[3]:.2f}")
                 st.markdown(f"**Compression Percent:** {compressed_file[4]:.2f}%")
+
                 if compression_algorithm == "JPG":
                     st.download_button(
                         label="Download",
