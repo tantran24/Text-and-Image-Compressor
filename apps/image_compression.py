@@ -21,8 +21,9 @@ def compress_images(uploaded_files, compression_algorithm, searchWindow=6, previ
         # original_file_size = get_file_size(image_path)
         original_file_size = 1
         if compression_algorithm == 'Adaptive Huffman':
-            compressor = adaptive_huffman.AdaptiveHuffman(path=image_path)
-            compressed_file = compressor.compress()
+            # compressor = adaptive_huffman.AdaptiveHuffman(path=image_path)
+            # compressed_file = compressor.compress()
+            adaptive_huffman.compress(image_path, f"CompressedFiles/{uploaded_file.name.split('.')[0]}", (0, 255), False)
 
         elif compression_algorithm == 'LZW':
             compressor = lzw.LZW_IMG(path=image_path)
@@ -52,7 +53,7 @@ def decompress_images(compressed_files, decompression_algorithm):
             decompressor = adaptive_huffman.AdaptiveHuffman(file=compressed_file)
             decompressed_image = decompressor.decompress()
         elif decompression_algorithm == 'LZW':
-            decompressor = lzw.LZW_IMG(file=    compressed_file)
+            decompressor = lzw.LZW_IMG(file=compressed_file)
             decompressed_image = decompressor.decompress()
         elif decompression_algorithm == 'LZ77':
             decompressor = lz77.LZ77(file=compressed_file)
