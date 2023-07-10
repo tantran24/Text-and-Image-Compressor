@@ -31,7 +31,6 @@ def text_compression():
         if mode == "Compress":
             if not input_text:
                 st.warning("Please enter some text.")
-                check_point = 1
                 return
 
             if compression_algorithm == 'Huffman':
@@ -73,7 +72,6 @@ def text_compression():
             elif compression_algorithm == 'LZW':
                 if st.button("Compress"):
                     compressor = lzw.LZW_TEXT()
-                    # encoding_code = compressor.compress(input_text)
                     encoding = compressor.compress_text(input_text)
                     before, after = len(input_text) * 8, len(encoding) * 8
 
@@ -85,7 +83,7 @@ def text_compression():
                     encoding = compressor.encode_lz77(input_text)
                     before, after = len(input_text) * 8, len(encoding) * 8
 
-            if compression_algorithm != 'Huffman' and after != None :
+            if after != None :
                 percent_saved = (1 - after / before) * 100
                 st.markdown("### Compression Results")
                 st.text(f"Original Size: {before} bits")
@@ -94,15 +92,11 @@ def text_compression():
 
             if selection == 'Enter':
                 st.text(f"Encoded output: {encoding}")
-                # if compression_algorithm == 'LZW':
-                #     st.text(f"Encodeding: {encoding_code}")
 
             elif selection == 'Upload':
                 name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "Encode." + \
                                  uploaded_file.name.split('.')[1]
-                # text_path_save = f"CompressedFiles/{name_file_comp}"
-                # with open(text_path_save, 'w', encoding="utf-8") as file:
-                #     file.write(str(encoding))
+
                 if encoding != None:
                     st.download_button(
                             label="Download",
@@ -156,9 +150,6 @@ def text_compression():
             elif selection == 'Upload':
                 name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "Decode." + \
                                  uploaded_file.name.split('.')[1]
-                # text_path_save = f"DecompressedFiles/{name_file_comp}"
-                # with open(text_path_save, 'w', encoding="utf-8") as file:
-                #     file.write(decoded_output)
 
                 if decoded_output != None:
                     st.download_button(
@@ -174,7 +165,7 @@ def text_compression():
         input_text = st.text_area("Enter the text to compress:")
         compress(input_text)
     elif selection == 'Upload':
-        uploaded_files = st.file_uploader("Choose text", accept_multiple_files=True, type=['txt', 'doc', 'docx'],
+        uploaded_files = st.file_uploader("Choose text", accept_multiple_files=True, type=['txt'],
                                           key="text")
 
         for uploaded_file in uploaded_files:

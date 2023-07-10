@@ -107,7 +107,6 @@ def image_compression():
     mode = st.sidebar.radio("Select mode", mode_options)
 
     if mode == 'Compress':
-        st.markdown("**Upload up to 20 images**")
         uploaded_files = st.file_uploader("Choose images", accept_multiple_files=True,
                                           type=['bmp'], key="image")
 
@@ -128,7 +127,6 @@ def image_compression():
 
             st.markdown("**Download compressed files:**")
             for i, compressed_file in enumerate(compressed_files):
-                # st.markdown(f"**File Name:** {compressed_file.name}")
                 st.markdown(f"**Original File Size:** {compressed_file[1]} bytes")
                 st.markdown(f"**Compressed File Size:** {compressed_file[2]} bytes")
                 st.markdown(f"**Compression Ratio:** {compressed_file[3]:.2f}")
